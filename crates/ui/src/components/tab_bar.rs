@@ -11,6 +11,7 @@ pub struct TabBar {
     children: SmallVec<[AnyElement; 2]>,
     end_children: SmallVec<[AnyElement; 2]>,
     scroll_handle: Option<ScrollHandle>,
+    show_bottom_border: bool,
 }
 
 impl TabBar {
@@ -21,7 +22,13 @@ impl TabBar {
             children: SmallVec::new(),
             end_children: SmallVec::new(),
             scroll_handle: None,
+            show_bottom_border: true,
         }
+    }
+
+    pub fn show_bottom_border(mut self, show_bottom_border: bool) -> Self {
+        self.show_bottom_border = show_bottom_border;
+        self
     }
 
     pub fn track_scroll(mut self, scroll_handle: &ScrollHandle) -> Self {
@@ -100,7 +107,6 @@ impl RenderOnce for TabBar {
             .flex_none()
             .w_full()
             .h(Tab::container_height(cx))
-            .py_px()
             .bg(colors.editor_background)
             .when(!self.start_children.is_empty(), |this| {
                 this.child(
@@ -109,9 +115,9 @@ impl RenderOnce for TabBar {
                         .gap(DynamicSpacing::Base04.rems(cx))
                         .px(DynamicSpacing::Base04.rems(cx))
                         .py_px()
-                        .border_b_1()
                         .border_r_1()
-                        .border_color(colors.border)
+                        .border_color(colors.border_variant)
+                        .when(self.show_bottom_border, |this| this.border_b_1())
                         .children(self.start_children),
                 )
             })
@@ -127,8 +133,9 @@ impl RenderOnce for TabBar {
                             .top_0()
                             .left_0()
                             .size_full()
-                            .border_b_1()
-                            .border_color(colors.border),
+                            .when(self.show_bottom_border, |this| {
+                                this.border_b_1().border_color(colors.border_variant)
+                            }),
                     )
                     .child(
                         h_flex()
@@ -151,9 +158,9 @@ impl RenderOnce for TabBar {
                         .gap(DynamicSpacing::Base04.rems(cx))
                         .px(DynamicSpacing::Base04.rems(cx))
                         .py_px()
-                        .border_color(colors.border)
-                        .border_b_1()
+                        .border_color(colors.border_variant)
                         .border_l_1()
+                        .when(self.show_bottom_border, |this| this.border_b_1())
                         .children(self.end_children),
                 )
             })

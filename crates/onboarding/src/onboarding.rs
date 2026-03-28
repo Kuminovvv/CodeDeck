@@ -375,6 +375,10 @@ impl Item for Onboarding {
         false
     }
 
+    fn show_chrome_borders(&self) -> bool {
+        false
+    }
+
     fn can_split(&self) -> bool {
         true
     }

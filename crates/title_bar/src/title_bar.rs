@@ -204,7 +204,10 @@ impl Render for TitleBar {
 
         children.push(
             h_flex()
+                .flex_1()
+                .min_w_0()
                 .h_full()
+                .items_center()
                 .gap_0p5()
                 .map(|title_bar| {
                     let mut render_project_items = title_bar_settings.show_branch_name
@@ -251,6 +254,9 @@ impl Render for TitleBar {
         children.push(
             h_flex()
                 .items_center()
+                .justify_end()
+                .flex_1()
+                .min_w_0()
                 .map(|this| {
                     if signed_in {
                         this.pr_1p5()
@@ -265,10 +271,7 @@ impl Render for TitleBar {
                     this.child(self.banner.clone())
                 })
                 .when(title_bar_settings.show_webstorm_toolbar, |this| {
-                    this.child(self.render_webstorm_center_toolbar(cx))
-                })
-                .when(title_bar_settings.show_webstorm_toolbar, |this| {
-                    this.child(self.render_webstorm_utility_toolbar())
+                    this.child(self.render_webstorm_right_toolbar(cx))
                 })
                 .children(self.render_call_controls(window, cx))
                 .children(self.render_connection_status(status, cx))
@@ -322,22 +325,12 @@ impl Render for TitleBar {
 }
 
 impl TitleBar {
-    fn render_webstorm_center_toolbar(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let toolbar_background = cx.theme().colors().editor_background;
-        let toolbar_border = cx.theme().colors().border.opacity(0.6);
-
+    fn render_webstorm_primary_toolbar(&self, _cx: &mut Context<Self>) -> impl IntoElement {
         h_flex()
             .items_center()
             .gap_0p5()
-            .px_1()
-            .py_0p5()
-            .rounded_md()
-            .border_1()
-            .border_color(toolbar_border)
-            .bg(toolbar_background)
-            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .child(
-                Button::new("webstorm-run-targets", "Run Targets")
+                Button::new("webstorm-run-targets", "Add Configuration")
                     .style(ButtonStyle::Subtle)
                     .label_size(LabelSize::Small)
                     .end_icon(
@@ -378,13 +371,13 @@ impl TitleBar {
                         window.dispatch_action(OpenProjectDebugTasks.boxed_clone(), cx);
                     }),
             )
+            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
     }
 
     fn render_webstorm_utility_toolbar(&self) -> impl IntoElement {
         h_flex()
             .items_center()
             .gap_0p5()
-            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .child(
                 IconButton::new("webstorm-agent-panel", IconName::Sparkle)
                     .style(ButtonStyle::Subtle)
@@ -413,6 +406,20 @@ impl TitleBar {
                         window.dispatch_action(OpenSettings.boxed_clone(), cx);
                     }),
             )
+            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+    }
+
+    fn render_webstorm_right_toolbar(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        h_flex()
+            .flex_none()
+            .items_center()
+            .gap_1()
+            .px_1()
+            .py_px()
+            .rounded_md()
+            .child(self.render_webstorm_primary_toolbar(cx))
+            .child(self.render_webstorm_utility_toolbar())
+            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
     }
 
     pub fn new(
@@ -522,10 +529,6 @@ impl TitleBar {
         this.observe_diagnostics(cx);
 
         this
-    }
-
-    fn worktree_count(&self, cx: &App) -> usize {
-        self.project.read(cx).visible_worktrees(cx).count()
     }
 
     fn toggle_update_simulation(&mut self, cx: &mut Context<Self>) {
@@ -867,14 +870,13 @@ impl TitleBar {
             })
             .trigger_with_tooltip(
                 Button::new("project_name_trigger", display_name)
+                    .style(ButtonStyle::Subtle)
                     .label_size(LabelSize::Small)
-                    .when(self.worktree_count(cx) > 1, |this| {
-                        this.end_icon(
-                            Icon::new(IconName::ChevronDown)
-                                .size(IconSize::XSmall)
-                                .color(Color::Muted),
-                        )
-                    })
+                    .end_icon(
+                        Icon::new(IconName::ChevronDown)
+                            .size(IconSize::XSmall)
+                            .color(Color::Muted),
+                    )
                     .selected_style(ButtonStyle::Tinted(TintColor::Accent))
                     .when(!is_project_selected, |s| s.color(Color::Muted)),
                 move |_window, cx| {
@@ -930,14 +932,13 @@ impl TitleBar {
             })
             .trigger_with_tooltip(
                 Button::new("project_name_trigger", display_name)
+                    .style(ButtonStyle::Subtle)
                     .label_size(LabelSize::Small)
-                    .when(self.worktree_count(cx) > 1, |this| {
-                        this.end_icon(
-                            Icon::new(IconName::ChevronDown)
-                                .size(IconSize::XSmall)
-                                .color(Color::Muted),
-                        )
-                    })
+                    .end_icon(
+                        Icon::new(IconName::ChevronDown)
+                            .size(IconSize::XSmall)
+                            .color(Color::Muted),
+                    )
                     .selected_style(ButtonStyle::Tinted(TintColor::Accent))
                     .when(!is_project_selected, |s| s.color(Color::Muted)),
                 move |_window, cx| {

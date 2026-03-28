@@ -2927,9 +2927,19 @@ impl Pane {
                     match show_close_button {
                         ShowCloseButton::Always => IconButton::new("close tab", IconName::Close),
                         ShowCloseButton::Hover => {
-                            IconButton::new("close tab", IconName::Close).visible_on_hover("")
+                            if is_active {
+                                IconButton::new("close tab", IconName::Close)
+                            } else {
+                                IconButton::new("close tab", IconName::Close).visible_on_hover("")
+                            }
                         }
-                        ShowCloseButton::Hidden => return this,
+                        ShowCloseButton::Hidden => {
+                            if is_active {
+                                IconButton::new("close tab", IconName::Close)
+                            } else {
+                                return this;
+                            }
+                        }
                     }
                     .shape(IconButtonShape::Square)
                     .icon_color(Color::Muted)
@@ -2955,7 +2965,7 @@ impl Pane {
                         this.tooltip(Tooltip::text(end_slot_tooltip_text))
                     }
                 });
-                this.end_slot(end_slot)
+                this.end_slot(h_flex().when(!is_pinned, |this| this.mt(px(-1.))).child(end_slot))
             })
             .child(
                 h_flex()
@@ -3320,6 +3330,11 @@ impl Pane {
             return gpui::Empty.into_any();
         }
 
+        let show_chrome_borders = self
+            .active_item()
+            .as_ref()
+            .is_none_or(|item| item.show_chrome_borders(cx));
+
         let focus_handle = self.focus_handle.clone();
 
         let navigate_backward = IconButton::new("navigate_backward", IconName::ArrowLeft)
@@ -3400,6 +3415,7 @@ impl Pane {
                 pinned_tabs,
                 unpinned_tabs,
                 tab_count,
+                show_chrome_borders,
                 navigate_backward,
                 navigate_forward,
                 window,
@@ -3410,6 +3426,7 @@ impl Pane {
                 pinned_tabs,
                 unpinned_tabs,
                 tab_count,
+                show_chrome_borders,
                 navigate_backward,
                 navigate_forward,
                 window,
@@ -3453,6 +3470,7 @@ impl Pane {
         pinned_tabs: Vec<AnyElement>,
         unpinned_tabs: Vec<AnyElement>,
         tab_count: usize,
+        show_chrome_borders: bool,
         navigate_backward: IconButton,
         navigate_forward: IconButton,
         window: &mut Window,
@@ -3460,7 +3478,7 @@ impl Pane {
     ) -> AnyElement {
         let tab_bar = self
             .configure_tab_bar_start(
-                TabBar::new("tab_bar"),
+                TabBar::new("tab_bar").show_bottom_border(show_chrome_borders),
                 navigate_backward,
                 navigate_forward,
                 window,
@@ -3491,6 +3509,7 @@ impl Pane {
         pinned_tabs: Vec<AnyElement>,
         unpinned_tabs: Vec<AnyElement>,
         tab_count: usize,
+        show_chrome_borders: bool,
         navigate_backward: IconButton,
         navigate_forward: IconButton,
         window: &mut Window,
@@ -3498,7 +3517,7 @@ impl Pane {
     ) -> AnyElement {
         let pinned_tab_bar = self
             .configure_tab_bar_start(
-                TabBar::new("pinned_tab_bar"),
+                TabBar::new("pinned_tab_bar").show_bottom_border(show_chrome_borders),
                 navigate_backward,
                 navigate_forward,
                 window,
@@ -3518,11 +3537,9 @@ impl Pane {
             .flex_none()
             .child(pinned_tab_bar)
             .child(
-                TabBar::new("unpinned_tab_bar").child(self.render_unpinned_tabs_container(
-                    unpinned_tabs,
-                    tab_count,
-                    cx,
-                )),
+                TabBar::new("unpinned_tab_bar")
+                    .show_bottom_border(show_chrome_borders)
+                    .child(self.render_unpinned_tabs_container(unpinned_tabs, tab_count, cx)),
             )
             .into_any_element()
     }

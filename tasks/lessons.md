@@ -1,0 +1,29 @@
+# Lessons
+
+- When matching a visual reference, check nested chrome containers as well as the outer panel shell; the mismatch may come from an inner grouped control background rather than the main layout surface.
+- When the user explicitly prefers a different icon language, switch the icon system to that library instead of continuing asset-by-asset parity with the original reference application.
+- When the user links a specific icon asset for a named UI glyph, prefer that exact asset over the broader icon-family mapping already in progress.
+- When restyling an icon rail, treat icon size and button chrome as separate concerns; users may want larger glyphs while still expecting standard square buttons with hover and selected states.
+- For JetBrains-style tool window stripes, do not substitute generic web-style square buttons; match the stripe model itself: narrower rail, smaller glyphs, inset selected capsule, muted inactive icons, and separators/grouping between sections.
+- For JetBrains-style rails, validate both the stripe buttons and the stripe container; even if the button chrome is correct, an extra rail background can still break parity.
+- When removing chrome backgrounds for JetBrains-like surfaces, check both side strips and the bottom status bar; they use separate containers and need separate cleanup.
+- When the user says to remove a panel-like background, confirm whether they want transparency or a different shared surface token; for JetBrains-like status bars the right fix is often `background`, not transparent.
+- For custom stripe buttons built from a wrapper plus inner `IconButton`, put cursor, tooltip, and click handling on the outer hit-area; otherwise only the glyph region feels interactive.
+- If the outer rail hit-area owns the pointer cursor, do not force `Arrow` on the inner `IconButton`; it will override the cursor exactly over the glyph and feel broken.
+- For WebStorm-like editor tabs, do not substitute a generic top-accent active tab; the correct pattern is a compact rounded chip with a full outline and proper tab height.
+- For WebStorm-like selected tabs, `rounded_sm` is too sharp; use a larger radius so the active chip reads as fully rounded rather than slightly squared off.
+- For WebStorm-like tabs, matching the chip shape is not enough; the tab bar also needs the full `40px` vertical geometry so the lower inset remains visible.
+- Once the tab itself owns the full `40px` geometry, remove any extra `TabBar` vertical padding; otherwise the selected chip can look shifted or misaligned by a pixel.
+- If the user wants active-tab-specific close affordance, implement it in `pane.rs` at the end-slot policy layer; changing the generic `Tab` component would be the wrong abstraction.
+- If the close icon still feels glued to the edge after changing end-slot policy, the real issue is often the generic `Tab` end-slot width; widen the slot itself instead of stacking more padding wrappers in `pane.rs`.
+- If a selected tab still looks visually off-center after spacing fixes, check for asymmetric start/end slot geometry before changing text alignment; mismatched slot widths can make the filename and close icon drift as a group.
+- For compact editor tabs, use `LineHeightStyle::UiLabel` on tab labels; the default text label line-height can make the filename look vertically off relative to small action glyphs even when flex alignment is correct.
+- If tab layout and label line-height are already correct but the close icon still reads visually low, prefer a tiny optical correction on the close-slot wrapper over disturbing the whole tab geometry.
+- When a user specifies a left inset for tab text but wants the right inset measured from the close button, model the two sides separately in `Tab` geometry instead of forcing a single symmetric `px(...)` padding.
+- If the user asks to remove the tab outline, drop the chip border at the shared `Tab` component level instead of trying to hide it only for the selected-state override.
+- When the user says the “tabs header” background is wrong, check `TabBar` first; that surface is separate from the individual `Tab` chip backgrounds.
+- When matching the tab strip to a nearby surface, verify which neighbor the user means: `title_bar_background` for top chrome or `editor_background` for the code area.
+- When restyling the large workspace panels, change the shared dock shell in `dock.rs` and the editor-shell wrappers in `workspace.rs`; zoom overlays and window decorations are separate layers and should not be used for panel chrome changes.
+- When a user asks for an unusually large outer panel radius, expect a quick visual correction pass; keep the radius centralized enough that changing `32px` to `24px` or `16px` is a narrow follow-up edit.
+- When large workspace panels still feel glued together after rounding the shells, the fix lives in the outer workspace layout wrappers (`p/gap` in `workspace.rs`), not in the inner pane dividers.
+- If some panels are still square or glued together after fixing outer workspace shells, check `pane_group.rs`; split panes inside the center area need their own gap and rounded clipping separate from the outer workspace layout.

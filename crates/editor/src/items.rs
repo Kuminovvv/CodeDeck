@@ -736,6 +736,7 @@ impl Item for Editor {
                     &self.title(cx),
                     MAX_TAB_TITLE_LEN,
                 ))
+                .line_height_style(LineHeightStyle::UiLabel)
                 .color(label_color)
                 .when(params.preview, |this| this.italic())
                 .when(was_deleted, |this| this.strikethrough()),
@@ -744,6 +745,7 @@ impl Item for Editor {
                 this.child(
                     Label::new(description)
                         .size(LabelSize::XSmall)
+                        .line_height_style(LineHeightStyle::UiLabel)
                         .color(Color::Muted),
                 )
             })

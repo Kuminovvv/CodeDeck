@@ -21,6 +21,7 @@ use ui::prelude::*;
 pub const HANDLE_HITBOX_SIZE: f32 = 4.0;
 const HORIZONTAL_MIN_SIZE: f32 = 80.;
 const VERTICAL_MIN_SIZE: f32 = 100.;
+const SPLIT_PANE_GAP: Pixels = px(8.);
 
 /// One or many panes, arranged in a horizontal or vertical axis due to a split.
 /// Panes have all their tabs and capabilities preserved, and can be split again or resized.
@@ -543,6 +544,8 @@ impl Member {
                         .relative()
                         .flex_1()
                         .size_full()
+                        .rounded(px(16.))
+                        .overflow_hidden()
                         .child(
                             AnyView::from(pane.clone())
                                 .cached(StyleRefinement::default().v_flex().size_full()),
@@ -1100,9 +1103,7 @@ mod element {
 
     use crate::WorkspaceSettings;
 
-    use super::{HANDLE_HITBOX_SIZE, HORIZONTAL_MIN_SIZE, VERTICAL_MIN_SIZE};
-
-    const DIVIDER_SIZE: f32 = 1.0;
+    use super::{HANDLE_HITBOX_SIZE, HORIZONTAL_MIN_SIZE, SPLIT_PANE_GAP, VERTICAL_MIN_SIZE};
 
     pub(super) fn pane_axis(
         axis: Axis,
@@ -1151,7 +1152,6 @@ mod element {
 
     struct PaneAxisHandleLayout {
         hitbox: Hitbox,
-        divider_bounds: Bounds<Pixels>,
     }
 
     impl PaneAxisElement {
@@ -1277,16 +1277,8 @@ mod element {
                     .size
                     .apply_along(axis, |_| px(HANDLE_HITBOX_SIZE)),
             };
-            let divider_bounds = Bounds {
-                origin: pane_bounds
-                    .origin
-                    .apply_along(axis, |origin| origin + pane_bounds.size.along(axis)),
-                size: pane_bounds.size.apply_along(axis, |_| px(DIVIDER_SIZE)),
-            };
-
             PaneAxisHandleLayout {
                 hitbox: window.insert_hitbox(handle_bounds, HitboxBehavior::BlockMouse),
-                divider_bounds,
             }
         }
     }
@@ -1350,9 +1342,14 @@ mod element {
             debug_assert!(flex_values_in_bounds(flexes.as_slice()));
 
             let total_flex = len as f32;
+            let total_gap = if len > 1 {
+                SPLIT_PANE_GAP * (len.saturating_sub(1) as f32)
+            } else {
+                px(0.)
+            };
 
             let mut origin = bounds.origin;
-            let space_per_flex = bounds.size.along(self.axis) / total_flex;
+            let space_per_flex = (bounds.size.along(self.axis) - total_gap) / total_flex;
 
             let mut bounding_boxes = self.bounding_boxes.lock();
             bounding_boxes.clear();
@@ -1378,7 +1375,9 @@ mod element {
                 child.layout_as_root(child_size.into(), window, cx);
                 child.prepaint_at(origin, window, cx);
 
-                origin = origin.apply_along(self.axis, |val| val + child_size.along(self.axis));
+                origin = origin.apply_along(self.axis, |val| {
+                    val + child_size.along(self.axis) + SPLIT_PANE_GAP
+                });
 
                 let is_leaf_pane = self.is_leaf_pane_mask.get(ix).copied().unwrap_or(true);
 
@@ -1486,11 +1485,6 @@ mod element {
                     } else {
                         window.set_cursor_style(cursor_style, &handle.hitbox);
                     }
-
-                    window.paint_quad(gpui::fill(
-                        handle.divider_bounds,
-                        cx.theme().colors().pane_group_border,
-                    ));
 
                     window.on_mouse_event({
                         let dragged_handle = layout.dragged_handle.clone();

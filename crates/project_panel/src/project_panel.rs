@@ -21,8 +21,9 @@ use git_ui;
 use git_ui::file_diff_view::FileDiffView;
 use gpui::{
     Action, AnyElement, App, AsyncWindowContext, Bounds, ClipboardEntry as GpuiClipboardEntry,
-    ClipboardItem, Context, CursorStyle, DismissEvent, Div, DragMoveEvent, Entity, EventEmitter,
-    ExternalPaths, FocusHandle, Focusable, FontWeight, Hsla, InteractiveElement, KeyContext,
+    ClipboardItem, Context, Corner, CursorStyle, DismissEvent, Div, DragMoveEvent, Entity,
+    EventEmitter, ExternalPaths, FocusHandle, Focusable, FontWeight, Hsla, InteractiveElement,
+    KeyContext,
     ListHorizontalSizingBehavior, ListSizingBehavior, Modifiers, ModifiersChangedEvent,
     MouseButton, MouseDownEvent, ParentElement, PathPromptOptions, Pixels, Point, PromptLevel,
     Render, ScrollStrategy, Stateful, Styled, Subscription, Task, UniformListScrollHandle,
@@ -62,7 +63,7 @@ use theme_settings::ThemeSettings;
 use ui::{
     Color, ContextMenu, ContextMenuEntry, DecoratedIcon, Divider, Icon, IconDecoration,
     IconDecorationKind, IndentGuideColors, IndentGuideLayout, Indicator, KeyBinding, Label,
-    LabelSize, ListItem, ListItemSpacing, ScrollAxes, ScrollableHandle, Scrollbars,
+    LabelSize, ListItem, ListItemSpacing, PopoverMenu, ScrollAxes, ScrollableHandle, Scrollbars,
     StickyCandidate, Tab, Tooltip, WithScrollbar, prelude::*, v_flex,
 };
 use util::{
@@ -618,25 +619,26 @@ struct ItemColors {
     hover: Hsla,
     drag_over: Hsla,
     marked: Hsla,
-    focused: Hsla,
 }
 
 fn get_item_color(is_sticky: bool, cx: &App) -> ItemColors {
     let colors = cx.theme().colors();
+    let selected_row_background = colors
+        .element_selected
+        .blend(colors.border_selected.opacity(0.12));
 
     ItemColors {
         default: if is_sticky {
             colors.panel_overlay_background
         } else {
-            colors.panel_background
+            colors.panel_background.opacity(0.)
         },
         hover: if is_sticky {
             colors.panel_overlay_hover
         } else {
-            colors.element_hover
+            colors.ghost_element_hover
         },
-        marked: colors.element_selected,
-        focused: colors.panel_focused_border,
+        marked: selected_row_background,
         drag_over: colors.drop_target_background,
     }
 }
@@ -5223,7 +5225,7 @@ impl ProjectPanel {
         &self,
         entry_id: ProjectEntryId,
         details: EntryDetails,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
         const GROUP_NAME: &str = "project_entry";
@@ -5240,9 +5242,7 @@ impl ProjectPanel {
         };
 
         let is_marked = self.marked_entries.contains(&selection);
-        let is_active = self
-            .selection
-            .is_some_and(|selection| selection.entry_id == entry_id);
+        let is_active = details.is_selected;
 
         let file_name = details.filename.clone();
 
@@ -5278,13 +5278,15 @@ impl ProjectPanel {
             marked_selections: Arc::from(self.marked_entries.clone()),
         };
 
-        let bg_color = if is_marked {
+        let is_selected_row = is_active || is_marked;
+
+        let bg_color = if is_selected_row {
             item_colors.marked
         } else {
             item_colors.default
         };
 
-        let bg_hover_color = if is_marked {
+        let bg_hover_color = if is_selected_row {
             item_colors.marked
         } else {
             item_colors.hover
@@ -5305,25 +5307,11 @@ impl ProjectPanel {
             None
         };
 
-        let border_color =
-            if !self.mouse_down && is_active && self.focus_handle.contains_focused(window, cx) {
-                match validation_color_and_message {
-                    Some((color, _)) => color,
-                    None => item_colors.focused,
-                }
-            } else {
-                bg_color
-            };
+        let border_color = validation_color_and_message
+            .as_ref()
+            .map_or(cx.theme().colors().border.opacity(0.), |(color, _)| *color);
 
-        let border_hover_color =
-            if !self.mouse_down && is_active && self.focus_handle.contains_focused(window, cx) {
-                match validation_color_and_message {
-                    Some((color, _)) => color,
-                    None => item_colors.focused,
-                }
-            } else {
-                bg_hover_color
-            };
+        let border_hover_color = border_color;
 
         let folded_directory_drag_target = self.folded_directory_drag_target;
         let is_highlighted = {
@@ -5368,10 +5356,10 @@ impl ProjectPanel {
             .relative()
             .group(GROUP_NAME)
             .cursor_pointer()
-            .rounded_none()
+            .mx_1()
+            .rounded_sm()
             .bg(bg_color)
             .border_1()
-            .border_r_2()
             .border_color(border_color)
             .hover(|style| style.bg(bg_hover_color).border_color(border_hover_color))
             .when(is_sticky, |this| this.block_mouse_except_scroll())
@@ -5694,6 +5682,7 @@ impl ProjectPanel {
                 ListItem::new(id)
                     .indent_level(depth)
                     .indent_step_size(px(settings.indent_size))
+                    .height(px(24.))
                     .spacing(match settings.entry_spacing {
                         ProjectPanelEntrySpacing::Comfortable => ListItemSpacing::Dense,
                         ProjectPanelEntrySpacing::Standard => ListItemSpacing::ExtraDense,
@@ -6505,11 +6494,6 @@ impl Render for ProjectPanel {
         };
 
         let is_local = project.is_local();
-        let root_name = project
-            .visible_worktrees(cx)
-            .next()
-            .map(|worktree| worktree.read(cx).root_name_str().to_string())
-            .unwrap_or_else(|| "Project".to_string());
 
         if has_worktree {
             let item_count = self
@@ -6595,6 +6579,7 @@ impl Render for ProjectPanel {
                 })
                 .size_full()
                 .relative()
+                .bg(cx.theme().colors().panel_background)
                 .on_modifiers_changed(cx.listener(
                     |this, event: &ModifiersChangedEvent, window, cx| {
                         this.refresh_drag_cursor_style(&event.modifiers, window, cx);
@@ -6671,22 +6656,89 @@ impl Render for ProjectPanel {
                                 .id("project-panel-header")
                                 .h(Tab::container_height(cx))
                                 .w_full()
-                                .px_2()
+                                .px_1p5()
                                 .justify_between()
                                 .items_center()
                                 .flex_none()
-                                .bg(cx.theme().colors().tab_bar_background)
+                                .bg(cx.theme().colors().panel_background)
                                 .border_b_1()
-                                .border_color(cx.theme().colors().border)
+                                .border_color(cx.theme().colors().border_variant)
                                 .child(
-                                    Label::new("Project")
-                                        .size(LabelSize::Small)
-                                        .color(Color::Muted),
+                                    h_flex()
+                                        .items_center()
+                                        .gap_0p5()
+                                        .child(
+                                            Label::new("Project")
+                                                .size(LabelSize::Small)
+                                                .weight(FontWeight::SEMIBOLD),
+                                        )
+                                        .child(
+                                            Icon::new(IconName::ChevronDown)
+                                                .size(IconSize::XSmall)
+                                                .color(Color::Muted),
+                                        ),
                                 )
                                 .child(
-                                    Label::new(root_name)
-                                        .size(LabelSize::Small)
-                                        .weight(FontWeight::SEMIBOLD),
+                                    h_flex()
+                                        .items_center()
+                                        .gap_0p5()
+                                        .child(
+                                            IconButton::new(
+                                                "project-panel-new-file",
+                                                IconName::Plus,
+                                            )
+                                            .style(ButtonStyle::Subtle)
+                                            .icon_size(IconSize::Small)
+                                            .tooltip(Tooltip::text("New File"))
+                                            .on_click(|_, window, cx| {
+                                                window.dispatch_action(NewFile.boxed_clone(), cx);
+                                            }),
+                                        )
+                                        .child(
+                                            IconButton::new(
+                                                "project-panel-new-directory",
+                                                IconName::FolderOpen,
+                                            )
+                                            .style(ButtonStyle::Subtle)
+                                            .icon_size(IconSize::Small)
+                                            .tooltip(Tooltip::text("New Directory"))
+                                            .on_click(|_, window, cx| {
+                                                window.dispatch_action(NewDirectory.boxed_clone(), cx);
+                                            }),
+                                        )
+                                        .child(
+                                            IconButton::new(
+                                                "project-panel-collapse-all",
+                                                IconName::ChevronDownUp,
+                                            )
+                                            .style(ButtonStyle::Subtle)
+                                            .icon_size(IconSize::Small)
+                                            .tooltip(Tooltip::text("Collapse All"))
+                                            .on_click(|_, window, cx| {
+                                                window.dispatch_action(CollapseAllEntries.boxed_clone(), cx);
+                                            }),
+                                        )
+                                        .child(
+                                            PopoverMenu::new("project-panel-header-menu")
+                                                .trigger_with_tooltip(
+                                                    IconButton::new(
+                                                        "project-panel-header-menu-trigger",
+                                                        IconName::Ellipsis,
+                                                    )
+                                                    .style(ButtonStyle::Subtle)
+                                                    .icon_size(IconSize::Small),
+                                                    Tooltip::text("Project Panel Actions"),
+                                                )
+                                                .anchor(Corner::TopRight)
+                                                .menu(move |window, cx| {
+                                                    Some(ContextMenu::build(window, cx, |menu, _, _| {
+                                                        menu.action("New File", NewFile.boxed_clone())
+                                                            .action("New Folder", NewDirectory.boxed_clone())
+                                                            .separator()
+                                                            .action("Collapse All", CollapseAllEntries.boxed_clone())
+                                                    }))
+                                                }),
+                                        ),
                                 ),
                         )
                         .child(
@@ -6912,6 +6964,7 @@ impl Render for ProjectPanel {
                                 .id("project-panel-blank-area")
                                 .block_mouse_except_scroll()
                                 .flex_grow()
+                                .bg(cx.theme().colors().panel_background)
                                 .on_scroll_wheel({
                                     let scroll_handle = self.scroll_handle.clone();
                                     let entity_id = cx.entity().entity_id();

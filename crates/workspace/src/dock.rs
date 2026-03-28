@@ -15,8 +15,8 @@ use serde::{Deserialize, Serialize};
 use settings::SettingsStore;
 use std::sync::Arc;
 use ui::{
-    ContextMenu, CountBadge, Divider, DividerColor, IconButton, Tooltip, prelude::*,
-    right_click_menu,
+    ButtonStyle, ContextMenu, CountBadge, Divider, DividerColor, IconButton, IconButtonShape,
+    Tooltip, prelude::*, right_click_menu,
 };
 use util::ResultExt as _;
 
@@ -27,6 +27,10 @@ pub enum PanelEvent {
     ZoomOut,
     Activate,
     Close,
+}
+
+fn should_insert_tool_window_separator(name: &str) -> bool {
+    matches!(name, "CollabPanel" | "NotificationPanel" | "AgentPanel")
 }
 
 pub use proto::PanelId;
@@ -1034,9 +1038,7 @@ impl Render for Dock {
                 .track_focus(&self.focus_handle(cx))
                 .flex()
                 .bg(cx.theme().colors().panel_background)
-                .rounded_lg()
-                .border_1()
-                .border_color(cx.theme().colors().border)
+                .rounded(px(16.))
                 .overflow_hidden()
                 .map(|this| match self.position().axis() {
                     // Width and height are always set on the workspace wrapper in
@@ -1098,104 +1100,142 @@ impl Render for PanelButtons {
         let active_index = dock.active_panel_index;
         let is_open = dock.is_open;
         let dock_position = dock.position;
+        let stripe_selected_background = cx.theme().colors().element_selected;
+        let stripe_hover_background = cx.theme().colors().ghost_element_hover;
 
         let (menu_anchor, menu_attach) = match dock.position {
             DockPosition::Left => (Corner::BottomLeft, Corner::TopLeft),
             DockPosition::Bottom | DockPosition::Right => (Corner::BottomRight, Corner::TopRight),
         };
 
-        let mut buttons: Vec<_> = dock
-            .panel_entries
-            .iter()
-            .enumerate()
-            .filter_map(|(i, entry)| {
-                let icon = entry.panel.icon(window, cx)?;
-                let icon_tooltip = entry
-                    .panel
-                    .icon_tooltip(window, cx)
-                    .ok_or_else(|| {
-                        anyhow::anyhow!("can't render a panel button without an icon tooltip")
-                    })
-                    .log_err()?;
-                let name = entry.panel.persistent_name();
-                let panel = entry.panel.clone();
+        let mut buttons = Vec::new();
+        for (i, entry) in dock.panel_entries.iter().enumerate() {
+            let Some(icon) = entry.panel.icon(window, cx) else {
+                continue;
+            };
+            let Some(icon_tooltip) = entry.panel.icon_tooltip(window, cx) else {
+                log::error!(
+                    "can't render panel button for {} without an icon tooltip",
+                    entry.panel.persistent_name()
+                );
+                continue;
+            };
+            let name = entry.panel.persistent_name();
+            let panel = entry.panel.clone();
 
-                let is_active_button = Some(i) == active_index && is_open;
-                let (action, tooltip) = if is_active_button {
-                    let action = dock.toggle_action();
+            let is_active_button = Some(i) == active_index && is_open;
+            let (action, tooltip) = if is_active_button {
+                let action = dock.toggle_action();
 
-                    let tooltip: SharedString =
-                        format!("Close {} Dock", dock.position.label()).into();
+                let tooltip: SharedString = format!("Close {} Dock", dock.position.label()).into();
 
-                    (action, tooltip)
-                } else {
-                    let action = entry.panel.toggle_action(window, cx);
+                (action, tooltip)
+            } else {
+                let action = entry.panel.toggle_action(window, cx);
 
-                    (action, icon_tooltip.into())
-                };
+                (action, icon_tooltip.into())
+            };
 
-                let focus_handle = dock.focus_handle(cx);
-                let icon_label = entry.panel.icon_label(window, cx);
+            let focus_handle = dock.focus_handle(cx);
+            let icon_label = entry.panel.icon_label(window, cx);
+            if self.layout == PanelButtonsLayout::Vertical
+                && i > 0
+                && should_insert_tool_window_separator(name)
+            {
+                buttons.push(
+                    Divider::horizontal()
+                        .color(DividerColor::BorderVariant)
+                        .inset()
+                        .into_any_element(),
+                );
+            }
 
-                Some(
-                    right_click_menu(name)
-                        .menu(move |window, cx| {
-                            const POSITIONS: [DockPosition; 3] = [
-                                DockPosition::Left,
-                                DockPosition::Right,
-                                DockPosition::Bottom,
-                            ];
+            buttons.push(
+                right_click_menu(name)
+                    .menu(move |window, cx| {
+                        const POSITIONS: [DockPosition; 3] = [
+                            DockPosition::Left,
+                            DockPosition::Right,
+                            DockPosition::Bottom,
+                        ];
 
-                            ContextMenu::build(window, cx, |mut menu, _, cx| {
-                                for position in POSITIONS {
-                                    if position != dock_position
-                                        && panel.position_is_valid(position, cx)
-                                    {
-                                        let panel = panel.clone();
-                                        menu = menu.entry(
-                                            format!("Dock {}", position.label()),
-                                            None,
-                                            move |window, cx| {
-                                                panel.set_position(position, window, cx);
-                                            },
-                                        )
-                                    }
+                        ContextMenu::build(window, cx, |mut menu, _, cx| {
+                            for position in POSITIONS {
+                                if position != dock_position && panel.position_is_valid(position, cx)
+                                {
+                                    let panel = panel.clone();
+                                    menu = menu.entry(
+                                        format!("Dock {}", position.label()),
+                                        None,
+                                        move |window, cx| {
+                                            panel.set_position(position, window, cx);
+                                        },
+                                    )
                                 }
-                                menu
-                            })
+                            }
+                            menu
                         })
-                        .anchor(menu_anchor)
-                        .attach(menu_attach)
-                        .trigger(move |is_active, _window, _cx| {
-                            // Include active state in element ID to invalidate the cached
-                            // tooltip when panel state changes (e.g., via keyboard shortcut)
-                            let button = IconButton::new((name, is_active_button as u64), icon)
-                                .icon_size(IconSize::Small)
-                                .toggle_state(is_active_button)
-                                .on_click({
-                                    let action = action.boxed_clone();
-                                    move |_, window, cx| {
-                                        window.focus(&focus_handle, cx);
-                                        window.dispatch_action(action.boxed_clone(), cx)
-                                    }
+                    })
+                    .anchor(menu_anchor)
+                    .attach(menu_attach)
+                    .trigger(move |is_active, _window, _cx| {
+                        let tooltip_action = action.boxed_clone();
+                        let click_action = action.boxed_clone();
+                        // Include active state in element ID to invalidate the cached
+                        // tooltip when panel state changes (e.g., via keyboard shortcut)
+                        let button = IconButton::new((name, is_active_button as u64), icon)
+                            .shape(IconButtonShape::Square)
+                            .style(ButtonStyle::Transparent)
+                            .size(ButtonSize::None)
+                            .icon_size(IconSize::Medium)
+                            .icon_color(if is_active_button {
+                                Color::Default
+                            } else {
+                                Color::Muted
+                            })
+                            .when(!is_active, |this| {
+                                this.tooltip(move |_window, cx| {
+                                    Tooltip::for_action(tooltip.clone(), &*tooltip_action, cx)
                                 })
-                                .when(!is_active, |this| {
-                                    this.tooltip(move |_window, cx| {
-                                        Tooltip::for_action(tooltip.clone(), &*action, cx)
-                                    })
-                                });
+                            });
 
-                            div().relative().child(button).when_some(
+                        h_flex()
+                            .relative()
+                            .w(px(30.))
+                            .h(px(30.))
+                            .items_center()
+                            .justify_center()
+                            .rounded_md()
+                            .cursor_pointer()
+                            .on_mouse_down(MouseButton::Left, |_, window, _| {
+                                window.prevent_default();
+                            })
+                            .on_mouse_up(MouseButton::Left, {
+                                let action = click_action.boxed_clone();
+                                move |_, window, cx| {
+                                    window.focus(&focus_handle, cx);
+                                    window.dispatch_action(action.boxed_clone(), cx)
+                                }
+                            })
+                            .when(is_active_button, |this| {
+                                this.bg(stripe_selected_background)
+                            })
+                            .when(!is_active_button, |this| {
+                                this.hover(|style| style.bg(stripe_hover_background))
+                            })
+                            .child(button)
+                            .when_some(
                                 icon_label
                                     .clone()
                                     .filter(|_| !is_active_button)
                                     .and_then(|label| label.parse::<usize>().ok()),
                                 |this, count| this.child(CountBadge::new(count)),
                             )
-                        }),
-                )
-            })
-            .collect();
+                            .into_any_element()
+                    })
+                    .into_any_element(),
+            );
+        }
 
         if dock_position == DockPosition::Right {
             buttons.reverse();
@@ -1207,12 +1247,7 @@ impl Render for PanelButtons {
             v_flex()
                 .gap_1()
                 .items_center()
-                .py_1()
-                .px_px()
-                .bg(cx.theme().colors().panel_background)
-                .rounded_md()
-                .border_1()
-                .border_color(cx.theme().colors().border.opacity(0.7))
+                .py_0p5()
                 .children(buttons)
                 .into_any_element()
         } else {

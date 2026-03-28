@@ -12,9 +12,9 @@
   "theme": {
     "mode": "system",
     "light": "One Light",
-    "dark": "One Dark",
+    "dark": "JetBrains New UI Dark",
   },
-  "icon_theme": "Zed (Default)",
+  "icon_theme": "Hugeicons Dark",
   // The name of a base set of key bindings to use.
   // This setting can take six values, each named after another
   // text editor:
@@ -29,7 +29,7 @@
   // The name of a font to use for rendering text in the editor
   // ".ZedMono" currently aliases to Lilex
   // but this may change in the future.
-  "buffer_font_family": ".ZedMono",
+  "buffer_font_family": "JetBrains Mono",
   // Set the buffer text's font fallbacks, this will be merged with
   // the platform's default fallbacks.
   "buffer_font_fallbacks": null,
@@ -70,6 +70,8 @@
   "ui_font_weight": 400,
   // The default font size for text in the UI
   "ui_font_size": 16,
+  // Experimental UI density for spacing and control sizing.
+  "unstable.ui_density": "compact",
   // The default font size for agent responses in the agent panel. Falls back to the UI font size if unset.
   "agent_ui_font_size": null,
   // The default font size for user messages in the agent panel.
@@ -707,7 +709,7 @@
     // Whether to hide the gitignore entries in the project panel.
     "hide_gitignore": false,
     // Default width of the project panel.
-    "default_width": 280,
+    "default_width": 300,
     // Where to dock the project panel. Can be 'left' or 'right'.
     "dock": "left",
     // Spacing between worktree entries in the project panel. Can be 'comfortable' or 'standard'.
@@ -719,7 +721,7 @@
     // Whether to show the git status in the project panel.
     "git_status": true,
     // Amount of indentation for nested items.
-    "indent_size": 16,
+    "indent_size": 14,
     // Whether to reveal it in the project panel automatically,
     // when a corresponding project entry becomes active.
     // Gitignored entries are never auto revealed.

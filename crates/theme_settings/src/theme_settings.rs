@@ -8,7 +8,7 @@
 mod schema;
 mod settings;
 
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
 
 use ::settings::{IntoGpui, Settings, SettingsStore};
 use anyhow::{Context as _, Result};
@@ -73,6 +73,7 @@ pub fn init(themes_to_load: LoadThemes, cx: &mut App) {
     if load_user_themes {
         let registry = ThemeRegistry::global(cx);
         load_bundled_themes(&registry);
+        load_bundled_icon_themes(&registry);
     }
 
     let theme = configured_theme(cx);
@@ -217,6 +218,38 @@ pub fn load_bundled_themes(registry: &ThemeRegistry) {
 
         let refined = refine_theme_family(theme_family);
         registry.insert_theme_families([refined]);
+    }
+}
+
+/// Loads the icon themes bundled with the Zed binary into the registry.
+pub fn load_bundled_icon_themes(registry: &ThemeRegistry) {
+    let icon_theme_paths = registry
+        .assets()
+        .list("icon_themes/")
+        .expect("failed to list icon theme assets")
+        .into_iter()
+        .filter(|path| path.ends_with(".json"));
+
+    for path in icon_theme_paths {
+        let Some(icon_theme) = registry.assets().load(&path).log_err().flatten() else {
+            continue;
+        };
+
+        let Some(icon_theme_family) = theme::deserialize_icon_theme(&icon_theme)
+            .with_context(|| format!("failed to parse icon theme at path \"{path}\""))
+            .log_err()
+        else {
+            continue;
+        };
+
+        let Some(icons_root_dir) = Path::new(path.as_ref()).parent() else {
+            continue;
+        };
+
+        registry
+            .load_icon_theme(icon_theme_family, icons_root_dir)
+            .with_context(|| format!("failed to load icon theme at path \"{path}\""))
+            .log_err();
     }
 }
 

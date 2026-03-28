@@ -150,6 +150,8 @@ pub use workspace_settings::{
 };
 use zed_actions::{Spawn, feedback::FileBugReport, theme::ToggleMode};
 
+const PANEL_SHELL_GAP: Pixels = px(8.);
+
 use crate::{item::ItemBufferKind, notifications::NotificationId};
 use crate::{
     persistence::{
@@ -7310,20 +7312,19 @@ impl Workspace {
     fn render_activity_strip(&self, cx: &App) -> impl IntoElement {
         v_flex()
             .id("workspace-activity-strip")
-            .w(px(36.))
+            .w(px(34.))
             .h_full()
             .flex_none()
             .justify_between()
             .items_center()
-            .py_1()
+            .py_0p5()
             .px_px()
-            .bg(cx.theme().colors().title_bar_background)
             .border_r_1()
-            .border_color(cx.theme().colors().border)
+            .border_color(cx.theme().colors().border_variant)
             .child(self.left_activity_buttons.clone())
             .child(
                 v_flex()
-                    .gap_2()
+                    .gap_1p5()
                     .items_center()
                     .child(self.right_activity_buttons.clone())
                     .child(self.bottom_activity_buttons.clone()),
@@ -7983,9 +7984,6 @@ impl Render for Workspace {
                                 .flex()
                                 .flex_col()
                                 .overflow_hidden()
-                                .border_t_1()
-                                .border_b_1()
-                                .border_color(colors.border)
                                 .child({
                                     let this = cx.entity();
                                     canvas(
@@ -8076,14 +8074,14 @@ impl Render for Workspace {
                                             .flex()
                                             .flex_col()
                                             .h_full()
-                                            .p_1()
-                                            .gap_1()
+                                            .p(PANEL_SHELL_GAP)
+                                            .gap(PANEL_SHELL_GAP)
                                             .child(
                                                 div()
                                                     .flex()
                                                     .flex_row()
                                                     .flex_1()
-                                                    .gap_1()
+                                                    .gap(PANEL_SHELL_GAP)
                                                     .when(show_webstorm_activity_strip, |this| {
                                                         this.child(self.render_activity_strip(cx))
                                                     })
@@ -8100,9 +8098,7 @@ impl Render for Workspace {
                                                             .flex()
                                                             .flex_col()
                                                             .flex_1()
-                                                            .rounded_lg()
-                                                            .border_1()
-                                                            .border_color(colors.border)
+                                                            .rounded(px(16.))
                                                             .bg(colors.editor_background)
                                                             .overflow_hidden()
                                                             .child(
@@ -8161,8 +8157,8 @@ impl Render for Workspace {
                                             .flex()
                                             .flex_row()
                                             .h_full()
-                                            .p_1()
-                                            .gap_1()
+                                            .p(PANEL_SHELL_GAP)
+                                            .gap(PANEL_SHELL_GAP)
                                             .when(show_webstorm_activity_strip, |this| {
                                                 this.child(self.render_activity_strip(cx))
                                             })
@@ -8172,13 +8168,13 @@ impl Render for Workspace {
                                                     .flex_col()
                                                     .flex_1()
                                                     .h_full()
-                                                    .gap_1()
+                                                    .gap(PANEL_SHELL_GAP)
                                                     .child(
                                                         div()
                                                             .flex()
                                                             .flex_row()
                                                             .flex_1()
-                                                            .gap_1()
+                                                            .gap(PANEL_SHELL_GAP)
                                                             .children(self.render_dock(DockPosition::Left, &self.left_dock, window, cx))
 
                                                             .child(
@@ -8186,9 +8182,7 @@ impl Render for Workspace {
                                                                     .flex()
                                                                     .flex_col()
                                                                     .flex_1()
-                                                                    .rounded_lg()
-                                                                    .border_1()
-                                                                    .border_color(colors.border)
+                                                                    .rounded(px(16.))
                                                                     .bg(colors.editor_background)
                                                                     .overflow_hidden()
                                                                     .child(
@@ -8230,8 +8224,8 @@ impl Render for Workspace {
                                             .flex()
                                             .flex_row()
                                             .h_full()
-                                            .p_1()
-                                            .gap_1()
+                                            .p(PANEL_SHELL_GAP)
+                                            .gap(PANEL_SHELL_GAP)
                                             .when(show_webstorm_activity_strip, |this| {
                                                 this.child(self.render_activity_strip(cx))
                                             })
@@ -8248,21 +8242,19 @@ impl Render for Workspace {
                                                     .flex_col()
                                                     .flex_1()
                                                     .h_full()
-                                                    .gap_1()
+                                                    .gap(PANEL_SHELL_GAP)
                                                     .child(
                                                         div()
                                                             .flex()
                                                             .flex_row()
                                                             .flex_1()
-                                                            .gap_1()
+                                                            .gap(PANEL_SHELL_GAP)
                                                             .child(
                                                                 div()
                                                                     .flex()
                                                                     .flex_col()
                                                                     .flex_1()
-                                                                    .rounded_lg()
-                                                                    .border_1()
-                                                                    .border_color(colors.border)
+                                                                    .rounded(px(16.))
                                                                     .bg(colors.editor_background)
                                                                     .overflow_hidden()
                                                                     .child(
@@ -8299,8 +8291,8 @@ impl Render for Workspace {
                                             .flex()
                                             .flex_row()
                                             .h_full()
-                                            .p_1()
-                                            .gap_1()
+                                            .p(PANEL_SHELL_GAP)
+                                            .gap(PANEL_SHELL_GAP)
                                             .when(show_webstorm_activity_strip, |this| {
                                                 this.child(self.render_activity_strip(cx))
                                             })
@@ -8316,10 +8308,8 @@ impl Render for Workspace {
                                                     .flex()
                                                     .flex_col()
                                                     .flex_1()
-                                                    .gap_1()
-                                                    .rounded_lg()
-                                                    .border_1()
-                                                    .border_color(colors.border)
+                                                    .gap(PANEL_SHELL_GAP)
+                                                    .rounded(px(16.))
                                                     .bg(colors.editor_background)
                                                     .overflow_hidden()
                                                     .child(

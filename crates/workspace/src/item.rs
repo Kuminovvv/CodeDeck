@@ -31,7 +31,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-use ui::{Color, Icon, IntoElement, Label, LabelCommon};
+use ui::{Color, Icon, IntoElement, Label, LabelCommon, LineHeightStyle};
 use util::ResultExt;
 
 pub const LEADER_UPDATE_THROTTLE: Duration = Duration::from_millis(200);
@@ -173,6 +173,7 @@ pub trait Item: Focusable + EventEmitter<Self::Event> + Render + Sized {
         let text = self.tab_content_text(params.detail.unwrap_or_default(), cx);
 
         Label::new(text)
+            .line_height_style(LineHeightStyle::UiLabel)
             .color(params.text_color())
             .into_any_element()
     }
@@ -343,6 +344,10 @@ pub trait Item: Focusable + EventEmitter<Self::Event> + Render + Sized {
     }
 
     fn show_toolbar(&self) -> bool {
+        true
+    }
+
+    fn show_chrome_borders(&self) -> bool {
         true
     }
 
@@ -543,6 +548,7 @@ pub trait ItemHandle: 'static + Send {
     fn breadcrumbs(&self, cx: &App) -> Option<(Vec<HighlightedText>, Option<Font>)>;
     fn breadcrumb_prefix(&self, window: &mut Window, cx: &mut App) -> Option<gpui::AnyElement>;
     fn show_toolbar(&self, cx: &App) -> bool;
+    fn show_chrome_borders(&self, cx: &App) -> bool;
     fn pixel_position_of_cursor(&self, cx: &App) -> Option<Point<Pixels>>;
     fn downgrade_item(&self) -> Box<dyn WeakItemHandle>;
     fn workspace_settings<'a>(&self, cx: &'a App) -> &'a WorkspaceSettings;
@@ -1106,6 +1112,10 @@ impl<T: Item> ItemHandle for Entity<T> {
 
     fn show_toolbar(&self, cx: &App) -> bool {
         self.read(cx).show_toolbar()
+    }
+
+    fn show_chrome_borders(&self, cx: &App) -> bool {
+        self.read(cx).show_chrome_borders()
     }
 
     fn pixel_position_of_cursor(&self, cx: &App) -> Option<Point<Pixels>> {

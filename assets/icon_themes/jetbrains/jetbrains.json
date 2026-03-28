@@ -1,0 +1,19 @@
+{
+  "$schema": "https://zed.dev/schema/icon_themes/v0.2.0.json",
+  "name": "JetBrains",
+  "author": "OpenAI",
+  "themes": [
+    {
+      "name": "JetBrains New UI Dark",
+      "appearance": "dark",
+      "directory_icons": {
+        "collapsed": "icons/folder.svg",
+        "expanded": "icons/folder_open.svg"
+      },
+      "chevron_icons": {
+        "collapsed": "icons/chevron_right.svg",
+        "expanded": "icons/chevron_down.svg"
+      }
+    }
+  ]
+}

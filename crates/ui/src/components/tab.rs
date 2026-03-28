@@ -5,8 +5,8 @@ use smallvec::SmallVec;
 
 use crate::prelude::*;
 
-const START_TAB_SLOT_SIZE: Pixels = px(10.);
-const END_TAB_SLOT_SIZE: Pixels = px(12.);
+const START_TAB_SLOT_SIZE: Pixels = px(16.);
+const END_TAB_SLOT_SIZE: Pixels = px(24.);
 
 /// The position of a [`Tab`] within a list of tabs.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -77,11 +77,13 @@ impl Tab {
     }
 
     pub fn content_height(cx: &App) -> Pixels {
-        DynamicSpacing::Base24.px(cx) - px(1.)
+        let _ = cx;
+        px(28.)
     }
 
     pub fn container_height(cx: &App) -> Pixels {
-        DynamicSpacing::Base24.px(cx)
+        let _ = cx;
+        px(40.)
     }
 }
 
@@ -113,35 +115,30 @@ impl RenderOnce for Tab {
         let active_tab_bg = colors
             .tab_active_background
             .blend(colors.border_selected.opacity(0.18));
-        let active_tab_border = colors.border_selected.opacity(0.7);
 
-        let (text_color, tab_bg, tab_border_color, _tab_hover_bg, _tab_active_bg) = match self.selected {
-            false => (
-                colors.text_muted,
-                colors.tab_inactive_background,
-                colors.border,
-                colors.ghost_element_hover,
-                colors.ghost_element_active,
-            ),
-            true => (
-                colors.text,
-                active_tab_bg,
-                active_tab_border,
-                colors.element_hover,
-                colors.element_active,
-            ),
+        let (text_color, tab_hover_bg) = match self.selected {
+            false => (colors.text_muted.opacity(0.75), colors.ghost_element_hover),
+            true => (colors.text, active_tab_bg),
         };
 
-        let (start_slot, end_slot) = {
-            let start_slot = h_flex()
-                .size(START_TAB_SLOT_SIZE)
-                .justify_center()
-                .children(self.start_slot);
+        let has_end_slot = self.end_slot.is_some();
 
-            let end_slot = h_flex()
-                .size(END_TAB_SLOT_SIZE)
-                .justify_center()
-                .children(self.end_slot);
+        let (start_slot, end_slot) = {
+            let start_slot = self.start_slot.map(|start_slot| {
+                h_flex()
+                    .w(START_TAB_SLOT_SIZE)
+                    .justify_center()
+                    .child(start_slot)
+                    .into_any_element()
+            });
+
+            let end_slot = self.end_slot.map(|end_slot| {
+                h_flex()
+                    .w(END_TAB_SLOT_SIZE)
+                    .justify_start()
+                    .child(end_slot)
+                    .into_any_element()
+            });
 
             match self.close_side {
                 TabCloseSide::End => (start_slot, end_slot),
@@ -150,47 +147,33 @@ impl RenderOnce for Tab {
         };
 
         self.div
+            .relative()
             .h(Tab::container_height(cx))
-            .bg(tab_bg)
-            .border_color(tab_border_color)
             .map(|this| match self.position {
-                TabPosition::First => {
-                    if self.selected {
-                        this.mx_px().my_px()
-                    } else {
-                        this.pl_px().pr_px().border_b_1()
-                    }
-                }
-                TabPosition::Last => {
-                    if self.selected {
-                        this.mx_px().my_px()
-                    } else {
-                        this.pl_px().border_b_1().border_r_1()
-                    }
-                }
-                TabPosition::Middle(Ordering::Equal) => {
-                    if self.selected {
-                        this.mx_px().my_px()
-                    } else {
-                        this.border_l_1().border_r_1().pb_px()
-                    }
-                }
-                TabPosition::Middle(Ordering::Less) => this.border_l_1().pr_px().border_b_1(),
-                TabPosition::Middle(Ordering::Greater) => this.border_r_1().pl_px().border_b_1(),
+                TabPosition::First => this.pl_px().pr_px(),
+                TabPosition::Last => this.pl_px().pr_px(),
+                TabPosition::Middle(_) => this.px_px(),
             })
-            .when(self.selected, |this| this.rounded_md().border_1())
             .cursor_pointer()
             .child(
                 h_flex()
                     .group("")
                     .relative()
                     .h(Tab::content_height(cx))
-                    .px(DynamicSpacing::Base02.px(cx))
+                    .mx_1()
+                    .mt(px(6.))
+                    .mb(px(6.))
+                    .pl(px(8.))
+                    .when(!has_end_slot, |this| this.pr(px(8.)))
                     .gap(DynamicSpacing::Base04.rems(cx))
+                    .rounded_md()
+                    .bg(colors.ghost_element_background)
+                    .hover(|style| style.bg(tab_hover_bg))
+                    .when(self.selected, |this| this.bg(active_tab_bg))
                     .text_color(text_color)
-                    .child(start_slot)
+                    .when_some(start_slot, |this, start_slot| this.child(start_slot))
                     .children(self.children)
-                    .child(end_slot),
+                    .when_some(end_slot, |this, end_slot| this.child(end_slot)),
             )
     }
 }
