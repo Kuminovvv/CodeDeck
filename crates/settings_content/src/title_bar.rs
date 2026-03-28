@@ -113,6 +113,10 @@ pub struct TitleBarSettingsContent {
     ///
     /// Default: false
     pub show_menus: Option<bool>,
+    /// Whether to show the custom WebStorm-style toolbar buttons in the title bar.
+    ///
+    /// Default: true
+    pub show_webstorm_toolbar: Option<bool>,
     /// The layout of window control buttons in the title bar (Linux only).
     ///
     /// This can be set to "platform_default" to follow the system configuration, or

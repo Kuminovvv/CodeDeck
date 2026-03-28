@@ -1291,6 +1291,9 @@ pub struct Workspace {
     left_dock: Entity<Dock>,
     bottom_dock: Entity<Dock>,
     right_dock: Entity<Dock>,
+    left_activity_buttons: Entity<PanelButtons>,
+    bottom_activity_buttons: Entity<PanelButtons>,
+    right_activity_buttons: Entity<PanelButtons>,
     panes: Vec<Entity<Pane>>,
     active_worktree_override: Option<WorktreeId>,
     panes_by_item: HashMap<EntityId, WeakEntity<Pane>>,
@@ -1618,20 +1621,16 @@ impl Workspace {
         let left_dock = Dock::new(DockPosition::Left, modal_layer.clone(), window, cx);
         let bottom_dock = Dock::new(DockPosition::Bottom, modal_layer.clone(), window, cx);
         let right_dock = Dock::new(DockPosition::Right, modal_layer.clone(), window, cx);
-        let left_dock_buttons = cx.new(|cx| PanelButtons::new(left_dock.clone(), cx));
-        let bottom_dock_buttons = cx.new(|cx| PanelButtons::new(bottom_dock.clone(), cx));
-        let right_dock_buttons = cx.new(|cx| PanelButtons::new(right_dock.clone(), cx));
+        let left_dock_buttons = cx.new(|cx| PanelButtons::new_vertical(left_dock.clone(), cx));
+        let bottom_dock_buttons =
+            cx.new(|cx| PanelButtons::new_vertical(bottom_dock.clone(), cx));
+        let right_dock_buttons = cx.new(|cx| PanelButtons::new_vertical(right_dock.clone(), cx));
         let multi_workspace = window
             .root::<MultiWorkspace>()
             .flatten()
             .map(|mw| mw.downgrade());
         let status_bar = cx.new(|cx| {
-            let mut status_bar =
-                StatusBar::new(&center_pane.clone(), multi_workspace.clone(), window, cx);
-            status_bar.add_left_item(left_dock_buttons, window, cx);
-            status_bar.add_right_item(right_dock_buttons, window, cx);
-            status_bar.add_right_item(bottom_dock_buttons, window, cx);
-            status_bar
+            StatusBar::new(&center_pane.clone(), multi_workspace.clone(), window, cx)
         });
 
         let session_id = app_state.session.read(cx).id().to_owned();
@@ -1718,6 +1717,9 @@ impl Workspace {
             left_dock,
             bottom_dock,
             right_dock,
+            left_activity_buttons: left_dock_buttons,
+            bottom_activity_buttons: bottom_dock_buttons,
+            right_activity_buttons: right_dock_buttons,
             _panels_task: None,
             project: project.clone(),
             follower_states: Default::default(),
@@ -7305,6 +7307,29 @@ impl Workspace {
         Some(container)
     }
 
+    fn render_activity_strip(&self, cx: &App) -> impl IntoElement {
+        v_flex()
+            .id("workspace-activity-strip")
+            .w(px(36.))
+            .h_full()
+            .flex_none()
+            .justify_between()
+            .items_center()
+            .py_1()
+            .px_px()
+            .bg(cx.theme().colors().title_bar_background)
+            .border_r_1()
+            .border_color(cx.theme().colors().border)
+            .child(self.left_activity_buttons.clone())
+            .child(
+                v_flex()
+                    .gap_2()
+                    .items_center()
+                    .child(self.right_activity_buttons.clone())
+                    .child(self.bottom_activity_buttons.clone()),
+            )
+    }
+
     pub fn for_window(window: &Window, cx: &App) -> Option<Entity<Workspace>> {
         window
             .root::<MultiWorkspace>()
@@ -7921,6 +7946,8 @@ impl Render for Workspace {
             .map(|(_, notification)| notification.entity_id())
             .collect::<Vec<_>>();
         let bottom_dock_layout = WorkspaceSettings::get_global(cx).bottom_dock_layout;
+        let show_webstorm_activity_strip =
+            WorkspaceSettings::get_global(cx).show_webstorm_activity_strip;
 
         div()
             .relative()
@@ -8049,11 +8076,17 @@ impl Render for Workspace {
                                             .flex()
                                             .flex_col()
                                             .h_full()
+                                            .p_1()
+                                            .gap_1()
                                             .child(
                                                 div()
                                                     .flex()
                                                     .flex_row()
                                                     .flex_1()
+                                                    .gap_1()
+                                                    .when(show_webstorm_activity_strip, |this| {
+                                                        this.child(self.render_activity_strip(cx))
+                                                    })
                                                     .overflow_hidden()
                                                     .children(self.render_dock(
                                                         DockPosition::Left,
@@ -8067,6 +8100,10 @@ impl Render for Workspace {
                                                             .flex()
                                                             .flex_col()
                                                             .flex_1()
+                                                            .rounded_lg()
+                                                            .border_1()
+                                                            .border_color(colors.border)
+                                                            .bg(colors.editor_background)
                                                             .overflow_hidden()
                                                             .child(
                                                                 h_flex()
@@ -8111,28 +8148,37 @@ impl Render for Workspace {
                                                         cx,
                                                     )),
                                             )
-                                            .child(div().w_full().children(self.render_dock(
-                                                DockPosition::Bottom,
-                                                &self.bottom_dock,
-                                                window,
-                                                cx
-                                            ))),
+                                            .child(
+                                                div().w_full().children(self.render_dock(
+                                                    DockPosition::Bottom,
+                                                    &self.bottom_dock,
+                                                    window,
+                                                    cx,
+                                                )),
+                                            ),
 
                                         BottomDockLayout::LeftAligned => div()
                                             .flex()
                                             .flex_row()
                                             .h_full()
+                                            .p_1()
+                                            .gap_1()
+                                            .when(show_webstorm_activity_strip, |this| {
+                                                this.child(self.render_activity_strip(cx))
+                                            })
                                             .child(
                                                 div()
                                                     .flex()
                                                     .flex_col()
                                                     .flex_1()
                                                     .h_full()
+                                                    .gap_1()
                                                     .child(
                                                         div()
                                                             .flex()
                                                             .flex_row()
                                                             .flex_1()
+                                                            .gap_1()
                                                             .children(self.render_dock(DockPosition::Left, &self.left_dock, window, cx))
 
                                                             .child(
@@ -8140,6 +8186,10 @@ impl Render for Workspace {
                                                                     .flex()
                                                                     .flex_col()
                                                                     .flex_1()
+                                                                    .rounded_lg()
+                                                                    .border_1()
+                                                                    .border_color(colors.border)
+                                                                    .bg(colors.editor_background)
                                                                     .overflow_hidden()
                                                                     .child(
                                                                         h_flex()
@@ -8180,6 +8230,11 @@ impl Render for Workspace {
                                             .flex()
                                             .flex_row()
                                             .h_full()
+                                            .p_1()
+                                            .gap_1()
+                                            .when(show_webstorm_activity_strip, |this| {
+                                                this.child(self.render_activity_strip(cx))
+                                            })
                                             .children(self.render_dock(
                                                 DockPosition::Left,
                                                 &self.left_dock,
@@ -8193,16 +8248,22 @@ impl Render for Workspace {
                                                     .flex_col()
                                                     .flex_1()
                                                     .h_full()
+                                                    .gap_1()
                                                     .child(
                                                         div()
                                                             .flex()
                                                             .flex_row()
                                                             .flex_1()
+                                                            .gap_1()
                                                             .child(
                                                                 div()
                                                                     .flex()
                                                                     .flex_col()
                                                                     .flex_1()
+                                                                    .rounded_lg()
+                                                                    .border_1()
+                                                                    .border_color(colors.border)
+                                                                    .bg(colors.editor_background)
                                                                     .overflow_hidden()
                                                                     .child(
                                                                         h_flex()
@@ -8238,6 +8299,11 @@ impl Render for Workspace {
                                             .flex()
                                             .flex_row()
                                             .h_full()
+                                            .p_1()
+                                            .gap_1()
+                                            .when(show_webstorm_activity_strip, |this| {
+                                                this.child(self.render_activity_strip(cx))
+                                            })
                                             .children(self.render_dock(
                                                 DockPosition::Left,
                                                 &self.left_dock,
@@ -8250,6 +8316,11 @@ impl Render for Workspace {
                                                     .flex()
                                                     .flex_col()
                                                     .flex_1()
+                                                    .gap_1()
+                                                    .rounded_lg()
+                                                    .border_1()
+                                                    .border_color(colors.border)
+                                                    .bg(colors.editor_background)
                                                     .overflow_hidden()
                                                     .child(
                                                         h_flex()

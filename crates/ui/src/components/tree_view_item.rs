@@ -132,18 +132,21 @@ impl Toggleable for TreeViewItem {
 
 impl RenderOnce for TreeViewItem {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let selected_bg = cx.theme().colors().element_active.opacity(0.5);
+        let colors = cx.theme().colors();
+        let selected_bg = colors
+            .element_selected
+            .blend(colors.border_selected.opacity(0.16));
 
-        let transparent_border = cx.theme().colors().border.opacity(0.);
-        let selected_border = cx.theme().colors().border.opacity(0.4);
-        let focused_border = cx.theme().colors().border_focused;
+        let transparent_border = colors.border.opacity(0.);
+        let selected_border = colors.border_selected.opacity(0.65);
+        let focused_border = colors.border_focused;
 
-        let item_size = rems_from_px(28.);
+        let item_size = rems_from_px(26.);
         let indentation_line = h_flex().size(item_size).flex_none().justify_center().child(
             div()
                 .w_px()
                 .h_full()
-                .bg(cx.theme().colors().border.opacity(0.5)),
+                .bg(colors.border.opacity(0.35)),
         );
 
         h_flex()
@@ -156,14 +159,17 @@ impl RenderOnce for TreeViewItem {
                     .cursor_pointer()
                     .size_full()
                     .h(item_size)
-                    .rounded_sm()
+                    .mx_1()
+                    .my_px()
+                    .px_px()
+                    .rounded_md()
                     .border_1()
                     .border_color(transparent_border)
                     .focus_visible(|s| s.border_color(focused_border))
                     .when(self.selected, |this| {
                         this.border_color(selected_border).bg(selected_bg)
                     })
-                    .hover(|s| s.bg(cx.theme().colors().element_hover))
+                    .hover(|s| s.bg(colors.element_hover.opacity(0.8)))
                     .map(|this| {
                         let label = self.label;
 

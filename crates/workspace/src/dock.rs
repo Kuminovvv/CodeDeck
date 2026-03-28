@@ -303,10 +303,17 @@ struct PanelEntry {
 
 pub struct PanelButtons {
     dock: Entity<Dock>,
+    layout: PanelButtonsLayout,
     _settings_subscription: Subscription,
 }
 
 pub(crate) const PANEL_SIZE_STATE_KEY: &str = "dock_panel_size";
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum PanelButtonsLayout {
+    Horizontal,
+    Vertical,
+}
 
 impl Dock {
     pub fn new(
@@ -1027,6 +1034,8 @@ impl Render for Dock {
                 .track_focus(&self.focus_handle(cx))
                 .flex()
                 .bg(cx.theme().colors().panel_background)
+                .rounded_lg()
+                .border_1()
                 .border_color(cx.theme().colors().border)
                 .overflow_hidden()
                 .map(|this| match self.position().axis() {
@@ -1034,11 +1043,6 @@ impl Render for Dock {
                     // render_dock, so fill whatever space the wrapper provides.
                     Axis::Horizontal => this.w_full().h_full().flex_row(),
                     Axis::Vertical => this.h_full().w_full().flex_col(),
-                })
-                .map(|this| match self.position() {
-                    DockPosition::Left => this.border_r_1(),
-                    DockPosition::Right => this.border_l_1(),
-                    DockPosition::Bottom => this.border_t_1(),
                 })
                 .child(
                     div()
@@ -1066,10 +1070,23 @@ impl Render for Dock {
 
 impl PanelButtons {
     pub fn new(dock: Entity<Dock>, cx: &mut Context<Self>) -> Self {
+        Self::new_with_layout(dock, PanelButtonsLayout::Horizontal, cx)
+    }
+
+    pub fn new_vertical(dock: Entity<Dock>, cx: &mut Context<Self>) -> Self {
+        Self::new_with_layout(dock, PanelButtonsLayout::Vertical, cx)
+    }
+
+    fn new_with_layout(
+        dock: Entity<Dock>,
+        layout: PanelButtonsLayout,
+        cx: &mut Context<Self>,
+    ) -> Self {
         cx.observe(&dock, |_, _, cx| cx.notify()).detach();
         let settings_subscription = cx.observe_global::<SettingsStore>(|_, cx| cx.notify());
         Self {
             dock,
+            layout,
             _settings_subscription: settings_subscription,
         }
     }
@@ -1186,18 +1203,33 @@ impl Render for PanelButtons {
 
         let has_buttons = !buttons.is_empty();
 
-        h_flex()
-            .gap_1()
-            .when(
-                has_buttons
-                    && (dock.position == DockPosition::Bottom
-                        || dock.position == DockPosition::Right),
-                |this| this.child(Divider::vertical().color(DividerColor::Border)),
-            )
-            .children(buttons)
-            .when(has_buttons && dock.position == DockPosition::Left, |this| {
-                this.child(Divider::vertical().color(DividerColor::Border))
-            })
+        if self.layout == PanelButtonsLayout::Vertical {
+            v_flex()
+                .gap_1()
+                .items_center()
+                .py_1()
+                .px_px()
+                .bg(cx.theme().colors().panel_background)
+                .rounded_md()
+                .border_1()
+                .border_color(cx.theme().colors().border.opacity(0.7))
+                .children(buttons)
+                .into_any_element()
+        } else {
+            h_flex()
+                .gap_1()
+                .when(
+                    has_buttons
+                        && (dock.position == DockPosition::Bottom
+                            || dock.position == DockPosition::Right),
+                    |this| this.child(Divider::vertical().color(DividerColor::Border)),
+                )
+                .children(buttons)
+                .when(has_buttons && dock.position == DockPosition::Left, |this| {
+                    this.child(Divider::vertical().color(DividerColor::Border))
+                })
+                .into_any_element()
+        }
     }
 }
 

@@ -5,8 +5,8 @@ use smallvec::SmallVec;
 
 use crate::prelude::*;
 
-const START_TAB_SLOT_SIZE: Pixels = px(12.);
-const END_TAB_SLOT_SIZE: Pixels = px(14.);
+const START_TAB_SLOT_SIZE: Pixels = px(10.);
+const END_TAB_SLOT_SIZE: Pixels = px(12.);
 
 /// The position of a [`Tab`] within a list of tabs.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -77,11 +77,11 @@ impl Tab {
     }
 
     pub fn content_height(cx: &App) -> Pixels {
-        DynamicSpacing::Base32.px(cx) - px(1.)
+        DynamicSpacing::Base24.px(cx) - px(1.)
     }
 
     pub fn container_height(cx: &App) -> Pixels {
-        DynamicSpacing::Base32.px(cx)
+        DynamicSpacing::Base24.px(cx)
     }
 }
 
@@ -109,18 +109,26 @@ impl ParentElement for Tab {
 impl RenderOnce for Tab {
     #[allow(refining_impl_trait)]
     fn render(self, _: &mut Window, cx: &mut App) -> Stateful<Div> {
-        let (text_color, tab_bg, _tab_hover_bg, _tab_active_bg) = match self.selected {
+        let colors = cx.theme().colors();
+        let active_tab_bg = colors
+            .tab_active_background
+            .blend(colors.border_selected.opacity(0.18));
+        let active_tab_border = colors.border_selected.opacity(0.7);
+
+        let (text_color, tab_bg, tab_border_color, _tab_hover_bg, _tab_active_bg) = match self.selected {
             false => (
-                cx.theme().colors().text_muted,
-                cx.theme().colors().tab_inactive_background,
-                cx.theme().colors().ghost_element_hover,
-                cx.theme().colors().ghost_element_active,
+                colors.text_muted,
+                colors.tab_inactive_background,
+                colors.border,
+                colors.ghost_element_hover,
+                colors.ghost_element_active,
             ),
             true => (
-                cx.theme().colors().text,
-                cx.theme().colors().tab_active_background,
-                cx.theme().colors().element_hover,
-                cx.theme().colors().element_active,
+                colors.text,
+                active_tab_bg,
+                active_tab_border,
+                colors.element_hover,
+                colors.element_active,
             ),
         };
 
@@ -144,33 +152,40 @@ impl RenderOnce for Tab {
         self.div
             .h(Tab::container_height(cx))
             .bg(tab_bg)
-            .border_color(cx.theme().colors().border)
+            .border_color(tab_border_color)
             .map(|this| match self.position {
                 TabPosition::First => {
                     if self.selected {
-                        this.pl_px().border_r_1().pb_px()
+                        this.mx_px().my_px()
                     } else {
                         this.pl_px().pr_px().border_b_1()
                     }
                 }
                 TabPosition::Last => {
                     if self.selected {
-                        this.border_l_1().border_r_1().pb_px()
+                        this.mx_px().my_px()
                     } else {
                         this.pl_px().border_b_1().border_r_1()
                     }
                 }
-                TabPosition::Middle(Ordering::Equal) => this.border_l_1().border_r_1().pb_px(),
+                TabPosition::Middle(Ordering::Equal) => {
+                    if self.selected {
+                        this.mx_px().my_px()
+                    } else {
+                        this.border_l_1().border_r_1().pb_px()
+                    }
+                }
                 TabPosition::Middle(Ordering::Less) => this.border_l_1().pr_px().border_b_1(),
                 TabPosition::Middle(Ordering::Greater) => this.border_r_1().pl_px().border_b_1(),
             })
+            .when(self.selected, |this| this.rounded_md().border_1())
             .cursor_pointer()
             .child(
                 h_flex()
                     .group("")
                     .relative()
                     .h(Tab::content_height(cx))
-                    .px(DynamicSpacing::Base04.px(cx))
+                    .px(DynamicSpacing::Base02.px(cx))
                     .gap(DynamicSpacing::Base04.rems(cx))
                     .text_color(text_color)
                     .child(start_slot)

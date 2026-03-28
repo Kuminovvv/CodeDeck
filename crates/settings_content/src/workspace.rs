@@ -107,6 +107,10 @@ pub struct WorkspaceSettingsContent {
     ///
     /// Default: false
     pub use_system_window_tabs: Option<bool>,
+    /// Whether to show the custom WebStorm-style activity strip on the left side of the workspace.
+    ///
+    /// Default: true
+    pub show_webstorm_activity_strip: Option<bool>,
     /// Whether to show padding for zoomed panels.
     /// When enabled, zoomed bottom panels will have some top padding,
     /// while zoomed left/right panels will have padding to the right/left (respectively).

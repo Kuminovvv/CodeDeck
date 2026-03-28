@@ -91,6 +91,8 @@ impl ParentElement for TabBar {
 
 impl RenderOnce for TabBar {
     fn render(self, _: &mut Window, cx: &mut App) -> impl IntoElement {
+        let colors = cx.theme().colors();
+
         div()
             .id(self.id)
             .group("tab_bar")
@@ -98,16 +100,18 @@ impl RenderOnce for TabBar {
             .flex_none()
             .w_full()
             .h(Tab::container_height(cx))
-            .bg(cx.theme().colors().tab_bar_background)
+            .py_px()
+            .bg(colors.editor_background)
             .when(!self.start_children.is_empty(), |this| {
                 this.child(
                     h_flex()
                         .flex_none()
                         .gap(DynamicSpacing::Base04.rems(cx))
-                        .px(DynamicSpacing::Base06.rems(cx))
+                        .px(DynamicSpacing::Base04.rems(cx))
+                        .py_px()
                         .border_b_1()
                         .border_r_1()
-                        .border_color(cx.theme().colors().border)
+                        .border_color(colors.border)
                         .children(self.start_children),
                 )
             })
@@ -124,12 +128,15 @@ impl RenderOnce for TabBar {
                             .left_0()
                             .size_full()
                             .border_b_1()
-                            .border_color(cx.theme().colors().border),
+                            .border_color(colors.border),
                     )
                     .child(
                         h_flex()
                             .id("tabs")
                             .flex_grow()
+                            .items_end()
+                            .gap_px()
+                            .px_px()
                             .overflow_x_scroll()
                             .when_some(self.scroll_handle, |cx, scroll_handle| {
                                 cx.track_scroll(&scroll_handle)
@@ -142,8 +149,9 @@ impl RenderOnce for TabBar {
                     h_flex()
                         .flex_none()
                         .gap(DynamicSpacing::Base04.rems(cx))
-                        .px(DynamicSpacing::Base06.rems(cx))
-                        .border_color(cx.theme().colors().border)
+                        .px(DynamicSpacing::Base04.rems(cx))
+                        .py_px()
+                        .border_color(colors.border)
                         .border_b_1()
                         .border_l_1()
                         .children(self.end_children),

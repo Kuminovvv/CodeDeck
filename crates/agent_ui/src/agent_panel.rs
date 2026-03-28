@@ -3709,6 +3709,8 @@ impl AgentPanel {
                     .agent_display_name(&id)
                     .unwrap_or_else(|| self.selected_agent_type.label());
                 (icon, label)
+            } else if matches!(self.selected_agent_type, AgentType::NativeAgent) {
+                (None, SharedString::from("AI Chat"))
             } else {
                 (None, self.selected_agent_type.label())
             };
@@ -4002,7 +4004,8 @@ impl AgentPanel {
             .flex_none()
             .justify_between()
             .gap_2()
-            .bg(cx.theme().colors().tab_bar_background)
+            .px_1()
+            .bg(cx.theme().colors().panel_background)
             .border_b_1()
             .border_color(cx.theme().colors().border);
 

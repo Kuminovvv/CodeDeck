@@ -63,7 +63,7 @@ use ui::{
     Color, ContextMenu, ContextMenuEntry, DecoratedIcon, Divider, Icon, IconDecoration,
     IconDecorationKind, IndentGuideColors, IndentGuideLayout, Indicator, KeyBinding, Label,
     LabelSize, ListItem, ListItemSpacing, ScrollAxes, ScrollableHandle, Scrollbars,
-    StickyCandidate, Tooltip, WithScrollbar, prelude::*, v_flex,
+    StickyCandidate, Tab, Tooltip, WithScrollbar, prelude::*, v_flex,
 };
 use util::{
     ResultExt, TakeUntilExt, TryFutureExt, maybe,
@@ -6505,6 +6505,11 @@ impl Render for ProjectPanel {
         };
 
         let is_local = project.is_local();
+        let root_name = project
+            .visible_worktrees(cx)
+            .next()
+            .map(|worktree| worktree.read(cx).root_name_str().to_string())
+            .unwrap_or_else(|| "Project".to_string());
 
         if has_worktree {
             let item_count = self
@@ -6661,6 +6666,29 @@ impl Render for ProjectPanel {
                 .track_focus(&self.focus_handle(cx))
                 .child(
                     v_flex()
+                        .child(
+                            h_flex()
+                                .id("project-panel-header")
+                                .h(Tab::container_height(cx))
+                                .w_full()
+                                .px_2()
+                                .justify_between()
+                                .items_center()
+                                .flex_none()
+                                .bg(cx.theme().colors().tab_bar_background)
+                                .border_b_1()
+                                .border_color(cx.theme().colors().border)
+                                .child(
+                                    Label::new("Project")
+                                        .size(LabelSize::Small)
+                                        .color(Color::Muted),
+                                )
+                                .child(
+                                    Label::new(root_name)
+                                        .size(LabelSize::Small)
+                                        .weight(FontWeight::SEMIBOLD),
+                                ),
+                        )
                         .child(
                             uniform_list("entries", item_count, {
                                 cx.processor(|this, range: Range<usize>, window, cx| {

@@ -49,7 +49,7 @@ use util::ResultExt;
 use workspace::{
     MultiWorkspace, ToggleWorktreeSecurity, Workspace, WorkspaceId, notifications::NotifyResultExt,
 };
-use zed_actions::OpenRemote;
+use zed_actions::{OpenProjectDebugTasks, OpenRemote, OpenSettings, Rerun, Spawn};
 
 pub use onboarding_banner::restore_banner;
 
@@ -242,12 +242,6 @@ impl Render for TitleBar {
                 .into_any_element(),
         );
 
-        children.push(self.render_collaborator_list(window, cx).into_any_element());
-
-        if title_bar_settings.show_onboarding_banner {
-            children.push(self.banner.clone().into_any_element())
-        }
-
         let status = self.client.status();
         let status = &*status.borrow();
         let user = self.user_store.read(cx).current_user();
@@ -256,6 +250,7 @@ impl Render for TitleBar {
 
         children.push(
             h_flex()
+                .items_center()
                 .map(|this| {
                     if signed_in {
                         this.pr_1p5()
@@ -265,6 +260,16 @@ impl Render for TitleBar {
                 })
                 .gap_1()
                 .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                .child(self.render_collaborator_list(window, cx))
+                .when(title_bar_settings.show_onboarding_banner, |this| {
+                    this.child(self.banner.clone())
+                })
+                .when(title_bar_settings.show_webstorm_toolbar, |this| {
+                    this.child(self.render_webstorm_center_toolbar(cx))
+                })
+                .when(title_bar_settings.show_webstorm_toolbar, |this| {
+                    this.child(self.render_webstorm_utility_toolbar())
+                })
                 .children(self.render_call_controls(window, cx))
                 .children(self.render_connection_status(status, cx))
                 .child(self.update_version.clone())
@@ -317,6 +322,99 @@ impl Render for TitleBar {
 }
 
 impl TitleBar {
+    fn render_webstorm_center_toolbar(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let toolbar_background = cx.theme().colors().editor_background;
+        let toolbar_border = cx.theme().colors().border.opacity(0.6);
+
+        h_flex()
+            .items_center()
+            .gap_0p5()
+            .px_1()
+            .py_0p5()
+            .rounded_md()
+            .border_1()
+            .border_color(toolbar_border)
+            .bg(toolbar_background)
+            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+            .child(
+                Button::new("webstorm-run-targets", "Run Targets")
+                    .style(ButtonStyle::Subtle)
+                    .label_size(LabelSize::Small)
+                    .end_icon(
+                        Icon::new(IconName::ChevronDown)
+                            .size(IconSize::XSmall)
+                            .color(Color::Muted),
+                    )
+                    .tooltip(Tooltip::text("Open run and debug targets"))
+                    .on_click(|_, window, cx| {
+                        window.dispatch_action(OpenProjectDebugTasks.boxed_clone(), cx);
+                    }),
+            )
+            .child(
+                IconButton::new("webstorm-run-task", IconName::PlayFilled)
+                    .style(ButtonStyle::Subtle)
+                    .icon_size(IconSize::Small)
+                    .icon_color(Color::Accent)
+                    .tooltip(Tooltip::text("Run a project task"))
+                    .on_click(|_, window, cx| {
+                        window.dispatch_action(Spawn::modal().boxed_clone(), cx);
+                    }),
+            )
+            .child(
+                IconButton::new("webstorm-rerun-task", IconName::HistoryRerun)
+                    .style(ButtonStyle::Subtle)
+                    .icon_size(IconSize::Small)
+                    .tooltip(Tooltip::text("Rerun the last task"))
+                    .on_click(|_, window, cx| {
+                        window.dispatch_action(Rerun::default().boxed_clone(), cx);
+                    }),
+            )
+            .child(
+                IconButton::new("webstorm-debug-config", IconName::Debug)
+                    .style(ButtonStyle::Subtle)
+                    .icon_size(IconSize::Small)
+                    .tooltip(Tooltip::text("Open debug configuration"))
+                    .on_click(|_, window, cx| {
+                        window.dispatch_action(OpenProjectDebugTasks.boxed_clone(), cx);
+                    }),
+            )
+    }
+
+    fn render_webstorm_utility_toolbar(&self) -> impl IntoElement {
+        h_flex()
+            .items_center()
+            .gap_0p5()
+            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+            .child(
+                IconButton::new("webstorm-agent-panel", IconName::Sparkle)
+                    .style(ButtonStyle::Subtle)
+                    .icon_size(IconSize::Small)
+                    .tooltip(Tooltip::text("Toggle AI chat panel"))
+                    .on_click(|_, window, cx| {
+                        window
+                            .dispatch_action(zed_actions::assistant::ToggleFocus.boxed_clone(), cx);
+                    }),
+            )
+            .child(
+                IconButton::new("webstorm-project-search", IconName::MagnifyingGlass)
+                    .style(ButtonStyle::Subtle)
+                    .icon_size(IconSize::Small)
+                    .tooltip(Tooltip::text("Search in project"))
+                    .on_click(|_, window, cx| {
+                        window.dispatch_action(workspace::NewSearch.boxed_clone(), cx);
+                    }),
+            )
+            .child(
+                IconButton::new("webstorm-settings", IconName::Settings)
+                    .style(ButtonStyle::Subtle)
+                    .icon_size(IconSize::Small)
+                    .tooltip(Tooltip::text("Open settings"))
+                    .on_click(|_, window, cx| {
+                        window.dispatch_action(OpenSettings.boxed_clone(), cx);
+                    }),
+            )
+    }
+
     pub fn new(
         id: impl Into<ElementId>,
         workspace: &Workspace,
