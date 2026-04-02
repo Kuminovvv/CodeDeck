@@ -1375,8 +1375,6 @@
   "telemetry": {
     // Send debug info like crash reports.
     "diagnostics": true,
-    // Send anonymized usage data like what languages you're using Zed with.
-    "metrics": true,
   },
   // Whether to disable all AI features in Zed.
   //

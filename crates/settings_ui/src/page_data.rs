@@ -303,7 +303,7 @@ fn general_page() -> SettingsPage {
         ]
     }
 
-    fn privacy_section() -> [SettingsPageItem; 3] {
+    fn privacy_section() -> [SettingsPageItem; 2] {
         [
             SettingsPageItem::SectionHeader("Privacy"),
             SettingsPageItem::SettingItem(SettingItem {
@@ -322,24 +322,6 @@ fn general_page() -> SettingsPage {
                             .telemetry
                             .get_or_insert_default()
                             .diagnostics = value;
-                    },
-                }),
-                metadata: None,
-                files: USER,
-            }),
-            SettingsPageItem::SettingItem(SettingItem {
-                title: "Telemetry Metrics",
-                description: "Send anonymized usage data like what languages you're using Zed with.",
-                field: Box::new(SettingField {
-                    json_path: Some("telemetry.metrics"),
-                    pick: |settings_content| {
-                        settings_content
-                            .telemetry
-                            .as_ref()
-                            .and_then(|telemetry| telemetry.metrics.as_ref())
-                    },
-                    write: |settings_content, value| {
-                        settings_content.telemetry.get_or_insert_default().metrics = value;
                     },
                 }),
                 metadata: None,

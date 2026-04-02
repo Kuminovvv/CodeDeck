@@ -238,6 +238,17 @@
 ## Tab Optical Alignment Review
 
 - The remaining mismatch was no longer structural layout centering; it was the close glyph reading slightly low relative to the compact tab title
+
+## Planned Metrics Removal
+
+- [ ] Disable client-side metrics collection and event flushing in the central telemetry pipeline
+- [ ] Remove `metrics_id` propagation from app startup and outbound requests that currently attach metrics identity
+- [ ] Remove metrics-facing UI entry points such as the telemetry log and metrics toggles, while preserving crash diagnostics controls
+- [ ] Run a targeted build to verify the metrics removal compiles cleanly
+
+## Metrics Removal Review
+
+- Pending
 - Applied a minimal `1px` upward optical correction to the non-pinned tab end-slot in `pane.rs` instead of disturbing the whole tab geometry
 - `cargo build` completed successfully in 19.15s after the optical alignment correction
 - The app was relaunched with `cargo run` on the updated binary
